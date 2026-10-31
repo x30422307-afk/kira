@@ -10,6 +10,7 @@ import android.accessibilityservice.AccessibilityService;
 import android.view.accessibility.AccessibilityEvent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -42,6 +43,8 @@ public class KiraAccess extends AccessibilityService {
     boolean busy = false;
     float camX, camY;
     int screenW;
+    static KiraAccess inst;
+    static float dx = 2f, dy = 0f, dw = 0f;
 
     int dp(float v) { return (int) (v * getResources().getDisplayMetrics().density); }
 
@@ -65,13 +68,13 @@ public class KiraAccess extends AccessibilityService {
             float b = Math.min(1f, Math.max(0f, p - 1f));
             float bottomFull = dp(210);
             float neckBottom = (camY + dp(12)) + (bottomFull - (camY + dp(12))) * a;
-            float neckW = dp(24) + dp(8) * a;
-            float neckL = camX + dp(2) - neckW / 2f;
-            rf.set(neckL, Math.max(0f, camY - dp(12)), neckL + neckW, neckBottom);
+            float neckW = dp(24 + dw) + dp(8) * a;
+            float neckL = camX + dp(dx) - neckW / 2f;
+            rf.set(neckL, Math.max(0f, camY + dp(dy) - dp(12)), neckL + neckW, neckBottom);
             c.drawRoundRect(rf, r, r, paint);
             if (b > 0f) {
-                float boxL = camX + dp(2) - dp(16);
-                float boxR = (boxL + dp(32)) + ((screenW - dp(8)) - (boxL + dp(32))) * b;
+                float boxL = camX + dp(dx) - dp(16 + dw / 2f);
+                float boxR = (boxL + dp(32 + dw)) + ((screenW - dp(8)) - (boxL + dp(32 + dw))) * b;
                 float boxT = statusH + dp(2);
                 if (neckBottom > boxT) {
                     rf.set(boxL, boxT, boxR, neckBottom);
@@ -135,6 +138,11 @@ public class KiraAccess extends AccessibilityService {
 
     @Override
     public void onServiceConnected() {
+        inst = this;
+        SharedPreferences sp = getSharedPreferences("kira", 0);
+        dx = sp.getFloat("dx", 2f);
+        dy = sp.getFloat("dy", 0f);
+        dw = sp.getFloat("dw", 0f);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         screenW = getResources().getDisplayMetrics().widthPixels;
         camX = screenW * CAM_X_FRAC;
@@ -160,6 +168,13 @@ public class KiraAccess extends AccessibilityService {
             placeTrigger();
             wm.updateViewLayout(trigger, trigLp);
         });
+    }
+
+    void preview(boolean on) {
+        busy = on;
+        h.removeCallbacksAndMessages(null);
+        shape.setVisibility(on ? View.VISIBLE : View.INVISIBLE);
+        shape.setProgress(on ? 2f : 0f);
     }
 
     void toggle() {
