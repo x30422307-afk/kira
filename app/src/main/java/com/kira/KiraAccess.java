@@ -29,6 +29,11 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
 public class KiraAccess extends AccessibilityService {
     static final float CAM_X_FRAC = 0.07f;
@@ -44,7 +49,7 @@ public class KiraAccess extends AccessibilityService {
     float camX, camY;
     int screenW;
     static KiraAccess inst;
-    static float dx = 2f, dy = 0f, dw = 0f;
+    static float dx = 8f, dy = 3f, dw = 0f;
 
     int dp(float v) { return (int) (v * getResources().getDisplayMetrics().density); }
 
@@ -140,8 +145,8 @@ public class KiraAccess extends AccessibilityService {
     public void onServiceConnected() {
         inst = this;
         SharedPreferences sp = getSharedPreferences("kira", 0);
-        dx = sp.getFloat("dx", 2f);
-        dy = sp.getFloat("dy", 0f);
+        dx = sp.getFloat("dx", 8f);
+        dy = sp.getFloat("dy", 3f);
         dw = sp.getFloat("dw", 0f);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         screenW = getResources().getDisplayMetrics().widthPixels;
@@ -170,6 +175,64 @@ public class KiraAccess extends AccessibilityService {
         });
     }
 
+    boolean abierto = false;
+    boolean panelOn = false;
+    LinearLayout panel;
+    ScrollView sv;
+    TextView chat;
+    EditText campo;
+
+    void mostrarPanel() {
+        if (panelOn) return;
+        if (panel == null) {
+            panel = new LinearLayout(this);
+            panel.setOrientation(LinearLayout.VERTICAL);
+            chat = new TextView(this);
+            chat.setTextColor(Color.WHITE);
+            chat.setTextSize(14);
+            sv = new ScrollView(this);
+            sv.addView(chat);
+            panel.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+            LinearLayout fila = new LinearLayout(this);
+            campo = new EditText(this);
+            campo.setHint("Escribe a Kira...");
+            campo.setHintTextColor(0x88FFFFFF);
+            campo.setTextColor(Color.WHITE);
+            campo.setSingleLine(true);
+            fila.addView(campo, new LinearLayout.LayoutParams(0, -2, 1f));
+            Button env = new Button(this);
+            env.setText("Enviar");
+            env.setOnClickListener(v -> enviar());
+            fila.addView(env, new LinearLayout.LayoutParams(-2, -2));
+            panel.addView(fila, new LinearLayout.LayoutParams(-1, -2));
+        }
+        float bl = camX + dp(dx) - dp(16 + dw / 2f);
+        float bt = shape.statusH + dp(2);
+        int w = (int) (screenW - dp(8) - bl) - dp(16);
+        int hh = (int) (dp(210) - bt) - dp(16);
+        WindowManager.LayoutParams lp = baseParams(w, hh);
+        lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
+        lp.x = (int) bl + dp(8);
+        lp.y = (int) bt + dp(8);
+        wm.addView(panel, lp);
+        panelOn = true;
+    }
+
+    void ocultarPanel() {
+        if (!panelOn) return;
+        try { wm.removeView(panel); } catch (Exception e) { }
+        panelOn = false;
+    }
+
+    void enviar() {
+        String t = campo.getText().toString().trim();
+        if (t.isEmpty()) return;
+        chat.append("Tu: " + t + "\nKira: (aun no estoy conectada a la IA)\n\n");
+        campo.setText("");
+        sv.post(() -> sv.fullScroll(View.FOCUS_DOWN));
+    }
+
     void preview(boolean on) {
         busy = on;
         h.removeCallbacksAndMessages(null);
@@ -178,6 +241,7 @@ public class KiraAccess extends AccessibilityService {
     }
 
     void toggle() {
+        if (abierto) { close(); return; }
         if (busy) return;
         busy = true;
         shape.setVisibility(View.VISIBLE);
@@ -188,13 +252,18 @@ public class KiraAccess extends AccessibilityService {
         open.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator an) {
-                h.postDelayed(KiraAccess.this::close, HOLD_MS);
+                abierto = true;
+                busy = false;
+                mostrarPanel();
             }
         });
         open.start();
     }
 
     void close() {
+        busy = true;
+        ocultarPanel();
+        abierto = false;
         ValueAnimator cl = ValueAnimator.ofFloat(2f, 0f);
         cl.setDuration(300);
         cl.setInterpolator(new AccelerateInterpolator());

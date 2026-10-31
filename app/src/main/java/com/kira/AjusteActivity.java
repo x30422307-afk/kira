@@ -51,8 +51,8 @@ public class AjusteActivity extends Activity {
     protected void onCreate(Bundle s) {
         super.onCreate(s);
         SharedPreferences sp = getSharedPreferences("kira", 0);
-        KiraAccess.dx = sp.getFloat("dx", 2f);
-        KiraAccess.dy = sp.getFloat("dy", 0f);
+        KiraAccess.dx = sp.getFloat("dx", 8f);
+        KiraAccess.dy = sp.getFloat("dy", 3f);
         KiraAccess.dw = sp.getFloat("dw", 0f);
 
         LinearLayout l = new LinearLayout(this);
