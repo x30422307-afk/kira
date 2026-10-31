@@ -151,6 +151,7 @@ public class KiraService extends Service {
         wm.addView(shape, sl);
 
         trigger = new View(this);
+        trigger.setBackgroundColor(0x66FF0000);
         trigLp = baseParams(dp(48), dp(48));
         placeTrigger();
         trigger.setOnClickListener(v -> toggle());
