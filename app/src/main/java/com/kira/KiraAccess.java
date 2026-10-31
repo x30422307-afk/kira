@@ -34,6 +34,9 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import java.io.*;
+import java.net.*;
+import org.json.*;
 
 public class KiraAccess extends AccessibilityService {
     static final float CAM_X_FRAC = 0.07f;
@@ -225,7 +228,79 @@ public class KiraAccess extends AccessibilityService {
         panelOn = false;
     }
 
+    JSONArray hist = new JSONArray();
+    boolean esperando = false;
+
+    String preguntar(String clave) throws Exception {
+        JSONArray msgs = new JSONArray();
+        msgs.put(new JSONObject().put("role", "system").put("content",
+            "Eres Kira, una asistente femenina, amable y directa. Responde siempre en español, corto y claro."));
+        int ini = Math.max(0, hist.length() - 12);
+        for (int i = ini; i < hist.length(); i++) msgs.put(hist.get(i));
+        JSONObject body = new JSONObject();
+        body.put("model", "openai/gpt-oss-120b");
+        body.put("messages", msgs);
+        HttpURLConnection c = (HttpURLConnection) new URL(
+            "https://api.groq.com/openai/v1/chat/completions").openConnection();
+        c.setRequestMethod("POST");
+        c.setRequestProperty("Authorization", "Bearer " + clave);
+        c.setRequestProperty("Content-Type", "application/json");
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(60000);
+        c.setDoOutput(true);
+        OutputStream os = c.getOutputStream();
+        os.write(body.toString().getBytes("UTF-8"));
+        os.close();
+        int code = c.getResponseCode();
+        InputStream is = code >= 400 ? c.getErrorStream() : c.getInputStream();
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = is.read(buf)) > 0) bo.write(buf, 0, n);
+        JSONObject j = new JSONObject(bo.toString("UTF-8"));
+        if (code >= 400) {
+            return "Error " + code + ": " + j.getJSONObject("error").optString("message");
+        }
+        return j.getJSONArray("choices").getJSONObject(0)
+            .getJSONObject("message").getString("content").trim();
+    }
+
     void enviar() {
+        String t = campo.getText().toString().trim();
+        if (t.isEmpty() || esperando) return;
+        campo.setText("");
+        if (t.startsWith("/clave ")) {
+            getSharedPreferences("kira", 0).edit()
+                .putString("clave", t.substring(7).trim()).apply();
+            chat.append("Kira: Clave guardada.\n\n");
+            return;
+        }
+        final String clave = getSharedPreferences("kira", 0).getString("clave", "");
+        if (clave.isEmpty()) {
+            chat.append("Kira: Primero escribe /clave y luego tu clave de Groq.\n\n");
+            return;
+        }
+        chat.append("Tu: " + t + "\n");
+        try { hist.put(new JSONObject().put("role", "user").put("content", t)); }
+        catch (Exception e) { }
+        esperando = true;
+        campo.setHint("Kira esta pensando...");
+        new Thread(() -> {
+            String r;
+            try { r = preguntar(clave); } catch (Exception e) { r = "Error: " + e.getMessage(); }
+            final String fin = r;
+            h.post(() -> {
+                chat.append("Kira: " + fin + "\n\n");
+                try { hist.put(new JSONObject().put("role", "assistant").put("content", fin)); }
+                catch (Exception e) { }
+                esperando = false;
+                campo.setHint("Escribe a Kira...");
+                sv.post(() -> sv.fullScroll(View.FOCUS_DOWN));
+            });
+        }).start();
+    }
+
+    void enviarViejo() {
         String t = campo.getText().toString().trim();
         if (t.isEmpty()) return;
         chat.append("Tu: " + t + "\nKira: (aun no estoy conectada a la IA)\n\n");
