@@ -65,13 +65,13 @@ public class KiraAccess extends AccessibilityService {
             float b = Math.min(1f, Math.max(0f, p - 1f));
             float bottomFull = dp(210);
             float neckBottom = (camY + dp(12)) + (bottomFull - (camY + dp(12))) * a;
-            float neckW = dp(24) + dp(4) * a;
-            float neckL = camX - neckW / 2f;
+            float neckW = dp(24) + dp(8) * a;
+            float neckL = camX + dp(2) - neckW / 2f;
             rf.set(neckL, Math.max(0f, camY - dp(12)), neckL + neckW, neckBottom);
             c.drawRoundRect(rf, r, r, paint);
             if (b > 0f) {
-                float boxL = camX - dp(14);
-                float boxR = (boxL + dp(28)) + ((screenW - dp(8)) - (boxL + dp(28))) * b;
+                float boxL = camX + dp(2) - dp(16);
+                float boxR = (boxL + dp(32)) + ((screenW - dp(8)) - (boxL + dp(32))) * b;
                 float boxT = statusH + dp(2);
                 if (neckBottom > boxT) {
                     rf.set(boxL, boxT, boxR, neckBottom);
