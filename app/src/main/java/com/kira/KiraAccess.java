@@ -65,13 +65,13 @@ public class KiraAccess extends AccessibilityService {
             float b = Math.min(1f, Math.max(0f, p - 1f));
             float bottomFull = dp(210);
             float neckBottom = (camY + dp(12)) + (bottomFull - (camY + dp(12))) * a;
-            float neckW = dp(26) + dp(10) * a;
+            float neckW = dp(24) + dp(4) * a;
             float neckL = camX - neckW / 2f;
-            rf.set(neckL, 0, neckL + neckW, neckBottom);
+            rf.set(neckL, Math.max(0f, camY - dp(12)), neckL + neckW, neckBottom);
             c.drawRoundRect(rf, r, r, paint);
             if (b > 0f) {
-                float boxL = Math.max(dp(4), camX - dp(18));
-                float boxR = (boxL + dp(36)) + ((screenW - dp(8)) - (boxL + dp(36))) * b;
+                float boxL = camX - dp(14);
+                float boxR = (boxL + dp(28)) + ((screenW - dp(8)) - (boxL + dp(28))) * b;
                 float boxT = statusH + dp(2);
                 if (neckBottom > boxT) {
                     rf.set(boxL, boxT, boxR, neckBottom);
@@ -150,7 +150,6 @@ public class KiraAccess extends AccessibilityService {
         wm.addView(shape, sl);
 
         trigger = new View(this);
-        trigger.setBackgroundColor(0x66FF0000);
         trigLp = baseParams(dp(48), dp(48));
         placeTrigger();
         trigger.setOnClickListener(v -> toggle());
